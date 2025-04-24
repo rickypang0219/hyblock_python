@@ -43,6 +43,4 @@ if __name__ == "__main__":
         start_time=1672531200,
         depth="0,20",  # kwargs for bidAsk endpoint
     )
-    print(df.head(10))
-
     print(df)
