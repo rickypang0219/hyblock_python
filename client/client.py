@@ -60,9 +60,9 @@ def iterative_fetch(time_column: str = "openDate", enabled: bool = True) -> Call
                     )
                     break
 
-                all_results.extend(
-                    data[:-1]
-                )  # exclude the last data to avoid duplicates
+                # exclude the last data to avoid duplicates
+                all_results.extend(data[:-1])
+                logging.info(f"Fetched {len(data)} data points from the endpoint")
 
                 try:
                     latest_time = max(int(entry[time_column]) for entry in data)
@@ -141,7 +141,7 @@ class HyblockConsumer:
             logging.error(f"Invalid JSON response: {str(e)}")
             raise Exception(f"Invalid JSON response: {str(e)}")
 
-    @iterative_fetch(time_column="openDate", enabled=False)
+    @iterative_fetch(time_column="openDate", enabled=True)
     def get_api_request(
         self, endpoint: str, query_params: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
