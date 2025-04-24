@@ -141,7 +141,7 @@ class HyblockConsumer:
             logging.error(f"Invalid JSON response: {str(e)}")
             raise Exception(f"Invalid JSON response: {str(e)}")
 
-    @iterative_fetch(time_column="openDate", enabled=True)
+    @iterative_fetch(time_column="openDate")
     def get_api_request(
         self, endpoint: str, query_params: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
@@ -274,6 +274,7 @@ def download_hyblock_data(
 
 if __name__ == "__main__":
     import os
+    import matplotlib.pyplot as plt
 
     CLIENT_ID = os.getenv("CLIENT_ID", "")
     CLIENT_SECRET = os.getenv("CLIENT_SECRET", "")
@@ -291,4 +292,9 @@ if __name__ == "__main__":
             "timeframe": "4h",
         },
     )
-    print(pl.DataFrame(data))
+
+    df = pl.DataFrame(data)
+    df.write_csv("test.csv")
+    print(df)
+    plt.plot(df["openDate"])
+    plt.show()

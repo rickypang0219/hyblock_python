@@ -8,6 +8,8 @@ API_KEY = os.getenv("API_KEY", "")
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     client_id = CLIENT_ID
     client_secret = CLIENT_SECRET
     api_key = API_KEY
@@ -22,7 +24,7 @@ if __name__ == "__main__":
     ]
     timeframe_list = [
         "1d",
-        "4h",
+        # "4h",
     ]
     exchange_list = [
         "Binance",
@@ -44,3 +46,17 @@ if __name__ == "__main__":
         depth="0,20",  # kwargs for bidAsk endpoint
     )
     print(df)
+
+    plt.plot(df["openDate"])
+
+    columns_to_plot = [col for col in df.columns if col != "openDate"]
+
+    for col in columns_to_plot:
+        plt.figure(figsize=(10, 6))
+        plt.plot(df["openDate"], df[col], label=col)
+        plt.xlabel("Open Date")
+        plt.ylabel(col)
+        plt.title(f"{col} vs Open Date")
+        plt.legend()
+        plt.grid(True)
+        plt.show()  # Display t

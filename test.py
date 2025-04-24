@@ -2,9 +2,11 @@ import requests
 import os
 import polars as pl
 
+
 CLIENT_ID = os.getenv("CLIENT_ID", "")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET", "")
 API_KEY = os.getenv("API_KEY", "")
+
 
 grant_type = "client_credentials"  # this is constant
 amazon_auth_url = "https://auth-api.hyblockcapital.com/oauth2/token"
@@ -26,6 +28,7 @@ def update_access_token():
 
 def get_data(path, base_url, query_params):
     auth_response_json = update_access_token()
+
     auth_token_header = {
         "Authorization": "Bearer %s" % auth_response_json["access_token"],
         "x-api-key": API_KEY,
@@ -49,4 +52,4 @@ query = {
 
 data = get_data(orderbook_path, base_url, query)
 
-print(pl.DataFrame(data))
+print(pl.DataFrame(data["data"]))
