@@ -12,3 +12,7 @@ wheels/
 
 # Macos Shit
 **/*.DS_Store
+
+
+# csv
+**/*.csv
