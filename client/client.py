@@ -11,7 +11,9 @@ logging.basicConfig(
 )
 
 
-def iterative_fetch(time_column: str = "openDate", enabled: bool = True) -> Callable:
+def iterative_fetch_backward(
+    time_column: str = "openDate", enabled: bool = True
+) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(
@@ -28,46 +30,42 @@ def iterative_fetch(time_column: str = "openDate", enabled: bool = True) -> Call
 
             all_results = []
             params = query_params or {}
-            start_time = params.get("startTime", 0)
-            if not start_time:
-                raise ValueError("startTime parameter is required")
             end_time = (
                 params.get("endTime", int(time.time()))
                 if params.get("endTime") is not None
                 else int(time.time())
             )
+            if not end_time:
+                raise ValueError("endTime parameter is required")
+            start_time = params.get("startTime", 0)
             limit = params.get("limit", 1000)
-            current_start_time = start_time
+            current_end_time = end_time
 
-            while current_start_time < end_time:
+            while current_end_time > start_time:
                 current_params = {
                     **params,
-                    "startTime": current_start_time,
-                    "endTime": end_time,
+                    "startTime": start_time,
+                    "endTime": current_end_time,
                     "limit": limit,
                 }
+                current_params.pop("startTime", None)
                 result = func(self, endpoint, current_params, *args, **kwargs)
-
                 if not result or not isinstance(result, dict) or "data" not in result:
                     logging.info(
-                        f"No data returned for {endpoint} at startTime={current_start_time}"
+                        f"No data returned for {endpoint} at endTime={current_end_time}"
                     )
                     break
 
                 data = result["data"]
                 if not data or not isinstance(data, list):
                     logging.info(
-                        f"Empty data list for {endpoint} at startTime={current_start_time}"
+                        f"Empty data list for {endpoint} at endTime={current_end_time}"
                     )
                     break
-
-                # exclude the last data to avoid duplicates
-                all_results.extend(data[:-1])
-                # logging.info(f"Fetched {len(data)} data points from the endpoint")
-
+                all_results.extend(data)
                 try:
-                    latest_time = max(int(entry[time_column]) for entry in data)
-                    current_start_time = latest_time + 1
+                    earliest_time = min(int(entry[time_column]) for entry in data)
+                    current_end_time = earliest_time - 1
                 except KeyError as e:
                     logging.error(
                         f"Time column '{time_column}' not found in response: {e}"
@@ -79,11 +77,13 @@ def iterative_fetch(time_column: str = "openDate", enabled: bool = True) -> Call
 
                 # Last fetching loop
                 if len(data) == 1:
-                    if data[-1][time_column] not in time_set:
+                    if data[0][time_column] not in time_set:
                         all_results.extend(data)
                         logging.info(f"Received {len(data)} results stopping iteration")
-                        current_start_time = latest_time + 3 * 86400  # jump days
-                        time_set.add(data[-1][time_column])
+                        current_end_time = (
+                            earliest_time - 3 * 86400
+                        )  # jump days backward
+                        time_set.add(data[0][time_column])
                         continue
                     else:
                         break
@@ -147,7 +147,7 @@ class HyblockConsumer:
             logging.error(f"Invalid JSON response: {str(e)}")
             raise Exception(f"Invalid JSON response: {str(e)}")
 
-    @iterative_fetch(time_column="openDate", enabled=True)
+    @iterative_fetch_backward(time_column="openDate", enabled=True)
     def get_api_request(
         self, endpoint: str, query_params: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
@@ -160,7 +160,6 @@ class HyblockConsumer:
             "Content-Type": "application/json",
         }
         url = self.base_url + endpoint
-        # logging.info(f"Making request to {url} with params {query_params}")
 
         try:
             response = requests.get(
@@ -292,14 +291,14 @@ if __name__ == "__main__":
         {
             "exchange": "Binance",
             "coin": "BTC",
-            "startTime": 1673136300,
+            "startTime": 1672502400,
             "endTime": 1735718400,
-            # "startTime": 1745366400,
             "limit": 1000,
             "timeframe": "1m",
         },
     )
     df = pl.DataFrame(data)
+    df = df.sort("openDate")
     df.write_csv("test.csv")
     plt.plot(df["openDate"], df["bid"])
     plt.show()
