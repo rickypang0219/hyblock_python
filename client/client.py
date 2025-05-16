@@ -6,6 +6,8 @@ import logging
 import polars as pl
 from itertools import product
 
+RETRY_COUNT = 3
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -24,6 +26,7 @@ def iterative_fetch_backward(
             **kwargs,
         ) -> list[dict[str, Any]] | None:
             time_set = set()
+            retry_count = 10
             if not enabled:
                 result = func(self, endpoint, query_params, *args, **kwargs)
                 return result.get("data", []) if isinstance(result, dict) else []
@@ -58,10 +61,19 @@ def iterative_fetch_backward(
 
                 data = result["data"]
                 if not data or not isinstance(data, list):
+                    if retry_count == 0:
+                        logging.info(
+                            f"Empty data list for {endpoint} at endTime={current_end_time}"
+                        )
+                        break
+
+                    current_end_time = current_end_time - 3 * 86400
                     logging.info(
-                        f"Empty data list for {endpoint} at endTime={current_end_time}"
+                        f"No data at endTime={current_end_time} and jump timestamp for 3 days"
                     )
-                    break
+                    retry_count -= 1
+                    continue
+
                 all_results.extend(data)
                 try:
                     earliest_time = min(int(entry[time_column]) for entry in data)
@@ -290,8 +302,9 @@ if __name__ == "__main__":
         "/bidAsk",
         {
             "exchange": "Binance",
-            "coin": "BTC",
-            "startTime": 1672502400,
+            "coin": "SOL",
+            # "startTime": 1672502400,
+            "startTime": 1659225600,
             "endTime": 1735718400,
             "limit": 1000,
             "timeframe": "1m",
