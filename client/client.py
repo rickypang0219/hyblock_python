@@ -180,6 +180,7 @@ class HyblockConsumer:
                 headers=headers,
                 timeout=60,
             )
+            time.sleep(0.1)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
